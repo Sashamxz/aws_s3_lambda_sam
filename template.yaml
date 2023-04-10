@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Process Uploaded Log Files in S3 Bucket Using AWS Lambda Triggered by EventBridge
+
+Resources:
+    # MyS3Bucket:
+    # Type: AWS::S3::Bucket
+    # Properties:
+    #   BucketName: log.file_journal
+
+  
+  MyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_function/app.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda_function/
+      MemorySize: 128
+      Timeout: 30
+      Policies:
+        - S3ReadPolicy:
+            BucketName: log.file_journal
+            BucketArn: !Sub 'arn:aws:s3:::log.file_journal'
+  
+  # MyEventBridgeRule:
+  #   Type: AWS::Events::Rule
+  #   Properties:
+  #     EventPattern: !Sub '${file(./events/event.json)}'
+  #     State: ENABLED
+  #     Targets:
+  #       - Arn: !GetAtt MyFunction.Arn
+  #         Id: MyFunctionTarget
+   
+
+
+Outputs:
+  MyFunctionArn:
+    Value: !GetAtt MyFunction.Arn

@@ -1,0 +1,19 @@
+
+  {
+    "source": [
+      "aws.s3"
+    ],
+    "detail": {
+      "eventSource": [
+        "s3.amazonaws.com"
+      ],
+      "eventName": [
+        "PutObject"
+      ],
+      "requestParameters": {
+        "bucketName": [
+          "log.filejournal"
+        ]
+      }
+    }
+  }
