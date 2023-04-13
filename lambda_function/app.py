@@ -1,10 +1,8 @@
+import os
 import json
 import urllib.parse
-import boto3
+from lambda_function.s3_log_manager import S3LogManager
 
-
-s3 = boto3.client('s3')
-#pytest, moto- testing + oop
 
 def lambda_handler(event, context):
     bucket = event['detail']['bucket']['name']
@@ -12,17 +10,12 @@ def lambda_handler(event, context):
                                     encoding='utf-8')
 
     try:
-        response = s3.get_object(Bucket=bucket, Key=key)
-        lines = response['Body'].read().decode('utf-8').split('\n')
-
-        count = 0
-        for line in lines:
-            if 'error' in line.lower():
-                count += 1
-        print(f'file - {key} have - {count} errors')
+        s3_file = S3LogManager(bucket, key)
+        file = s3_file.process_all_file(create_file_with_err)
+        print(f'file - {file} has been created')
         return {
             'statusCode': 200,
-            'body': json.dumps({'error_count': count})
+            'body': json.dumps({'file': file})
         }
 
     except Exception as e:
@@ -31,3 +24,21 @@ def lambda_handler(event, context):
               they exist and your bucket is in the same region as \
               this function.'.format(key, bucket))
         raise e
+
+
+def create_file_with_err(file_contents):
+    error_lines = [line for line in file_contents if 'error' in line.lower()]
+    if error_lines:
+        new_file_name = 'error_log.txt'
+        if os.path.exists(new_file_name):
+            i = 1
+            while os.path.exists(f'error_log_{i}.txt'):
+                i += 1
+            new_file_name = f'error_log_{i}.txt'
+        with open(new_file_name, 'w') as f:
+            f.write('\n'.join(error_lines))
+        print(f'File "{new_file_name}" has been created with error logs.')
+        return new_file_name
+    else:
+        print('No error logs found.')
+        return None
