@@ -9,6 +9,7 @@ packages = [{include = "aws_s3_lmbd"}]
 [tool.poetry.dependencies]
 python = "3.9.1"
 boto3 = "^1.26.109"
+moto = "^4.1.7"
 
 
 [build-system]
