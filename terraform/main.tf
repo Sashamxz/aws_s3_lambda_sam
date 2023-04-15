@@ -2,55 +2,73 @@ provider "aws" {
   profile = "default"
 }
 
-
-# aws cloudformation stack
-data "aws_cloudformation_stack" "sam_stack" {
-  name = "aws-sam-cli-managed-default"
-}
-
-# Export Lambda function ARN and  as Terraform outputs
-output "lambda_function_arn" {
-  value = data.aws_cloudformation_stack.sam_stack.outputs["MyFunctionArn"]
-}
-
-
 # Create s3 bucket
 resource "aws_s3_bucket" "log_bucket" {
-  bucket = "log.file_journal"
+  bucket = "s3log-file-journal"
 }
 
-
-# # Create EventBridge rule
-# data "local_file" "event_json" {
-#   filename = "../events/event.json"
-# }
-
-# resource "aws_cloudwatch_event_rule" "s3_event_rule" {
-#   name          = jsondecode(data.local_file.event_json.content)["name"]
-#   description   = jsondecode(data.local_file.event_json.content)["description"]
-#   event_pattern = jsondecode(data.local_file.event_json.content)["event_pattern"]
-# }
-
-
-# # Create EventBridge target
-# resource "aws_cloudwatch_event_target" "lambda_event_target" {
-#   rule      = aws_cloudwatch_event_rule.s3_event_rule.name
-#   arn       = aws_lambda_function.s3_lambda_log.arn
-#   target_id = "lambda-target"
-# }
-
-
-# Use CloudFormation stack output to get S3 bucket ARN
-data "aws_s3_bucket_object" "log_bucket_objects" {
-  bucket = aws_s3_bucket.log_bucket.id
-  key    = "test.txt"
-
-  depends_on = [
-    aws_cloudformation_stack.sam_stack,
-  ]
-}
-
-
+# s3 bucket
 output "s3_bucket_arn" {
   value = aws_s3_bucket.log_bucket.arn
+}
+
+# Reference the existing CloudFormation stack
+data "aws_cloudformation_stack" "existing_stack" {
+  name = "lambda-s3-envt-trigger" 
+}
+
+# Export Lambda function ARN as Terraform output
+output "lambda_function_arn" {
+  value = data.aws_cloudformation_stack.existing_stack.outputs["LambdaFunctionArn"]
+}
+
+# Define local variable for event JSON
+locals {
+  event_json = {
+    source = ["aws.s3"]
+    detail = {
+      eventSource = ["s3.amazonaws.com"]
+      eventName = ["PutObject"]
+      requestParameters = {
+        bucketName = ["s3log-file-journal"]
+      }
+    }
+  }
+}
+
+# create rule
+resource "aws_cloudwatch_event_rule" "s3_event_rule" {
+  name          = element(local.event_json.source, 0)
+  description   = local.event_json.detail.eventSource[0]
+  event_pattern = jsonencode(local.event_json)
+}
+
+# Create EventBridge target
+resource "aws_cloudwatch_event_target" "lambda_event_target" {
+  rule      = aws_cloudwatch_event_rule.s3_event_rule.name
+  arn       = data.aws_cloudformation_stack.existing_stack.outputs["LambdaFunctionArn"]
+  target_id = "lambda-target"
+}
+
+# Add S3 bucket notification configuration
+resource "aws_s3_bucket_notification_configuration" "this" {
+  rule {
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+
+      tags {
+        Source = aws_s3_bucket.log_bucket.arn
+      }
+    }
+
+    # Add EventBridge target
+    destination {
+      arn = aws_eventbridge_event_bus.this.arn
+    }
+  }
+}
+resource "aws_eventbridge_event_bus" "my_event_bus" {
+  name = "my-event-bus"
 }
