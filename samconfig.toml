@@ -1,12 +1,8 @@
 version = 0.1
-[default]
-profile = "develop" 
-region = "eu-north-1"
-
-[default.deploy.parameters]
-stack_name = "sam-app"
+[y.deploy.parameters]
+stack_name = "lambda-s3-envt-trigger"
 resolve_s3 = true
-s3_prefix = "sam-app"
+s3_prefix = "lambda-s3-envt-trigger"
 region = "eu-north-1"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
