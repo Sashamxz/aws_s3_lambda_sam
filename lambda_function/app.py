@@ -4,14 +4,12 @@ from datetime import datetime
 from lambda_function.s3_log_manager import S3LogManager
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: dict, context: dict) -> dict:
     bucket = event['detail']['bucket']['name']
     key = urllib.parse.unquote_plus(event['detail']['object']['key'],
                                     encoding='utf-8')
-    default_local_path = '../downloaded_files'
-
     try:
-        s3_file = S3LogManager(bucket, key, default_local_path)
+        s3_file = S3LogManager(bucket, key)
         s3_file.process_lines(calculate_request_time)
         print(f'file - {key} has been analized')
         return {
@@ -27,7 +25,7 @@ def lambda_handler(event, context):
         raise e
 
 
-def calculate_request_time(line):
+def calculate_request_time(line: str) -> None:
     if "send_data" in line and "response" in line:
         send_data_str = line.split("send_data:")[1].split(" ")[0]
         response_str = line.split("response:")[1].split(" ")[0]
